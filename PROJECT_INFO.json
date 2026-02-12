@@ -1,0 +1,14 @@
+{
+  "projectName": "DW-AutoTag",
+  "description": "JIRA Auto-Tag Extension - Auto-insert user TAGs and replace with avatars",
+  "version": "1.0.0",
+  "status": "MVP - Ready for Testing",
+  "theme": {
+    "color": "#FF6B35",
+    "name": "Donweb Orange"
+  },
+  "targetDomain": "https://jira-iti.dat",
+  "browser": "Chrome/Edge (Manifest V3)",
+  "avatarSource": "https://campus.donweb.com/",
+  "configLocation": "JSON centralizado online"
+}
