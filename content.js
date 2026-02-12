@@ -484,6 +484,10 @@
           avatarContainer.innerHTML = "";
           avatarContainer.classList.add("dwat-avatars");
 
+          // Clase por cantidad para ajustar tamaños vía CSS
+          const count = Math.min(matched.length, 3);
+          avatarContainer.classList.add(`dwat-count-${count}`);
+
           const maxShow = 3;
           const visible = matched.slice(0, maxShow);
 
@@ -512,12 +516,72 @@
     });
   }
 
+  // =========================================================================
+  //  PARTE 3 – QUICK FILTERS: Agregar avatares a los botones de filtro
+  // =========================================================================
+
   /**
-   * Programa el procesamiento de cards con debounce (evita spam del Observer).
+   * Busca los botones de Quick Filter y les agrega el avatar si matchean
+   * con un usuario del config.
    */
+  function processQuickFilters() {
+    if (users.length === 0) return;
+
+    const buttons = document.querySelectorAll(
+      ".js-quickfilter-button:not([data-dwat-qf])"
+    );
+    if (buttons.length === 0) return;
+
+    log(`Procesando ${buttons.length} Quick Filter(s)…`);
+
+    buttons.forEach((btn) => {
+      const btnText = btn.textContent.trim();
+
+      // Buscar match: el texto del botón coincide con el tag inner de algún usuario
+      const matched = users.find((u) => {
+        const inner = u.tag.replace(/[\[\]]/g, "");
+        return inner === btnText;
+      });
+
+      if (matched) {
+        // Crear avatar mini para el botón
+        const avatar = document.createElement("img");
+        avatar.className = "dwat-qf-avatar";
+        avatar.src = matched.avatar;
+        avatar.alt = matched.name;
+        avatar.title = matched.name;
+        avatar.loading = "lazy";
+        avatar.onerror = function () {
+          // Fallback: iniciales
+          const fb = document.createElement("span");
+          fb.className = "dwat-qf-initials";
+          fb.textContent = matched.name.split(" ").map((n) => n[0]).join("");
+          fb.title = matched.name;
+          this.replaceWith(fb);
+        };
+
+        // Insertar al principio del botón
+        btn.insertBefore(avatar, btn.firstChild);
+        btn.classList.add("dwat-qf-has-avatar");
+
+        log(`Quick Filter "${btnText}" → avatar de ${matched.name}`);
+      }
+
+      btn.setAttribute("data-dwat-qf", "done");
+    });
+  }
+
+  /**
+   * Programa el procesamiento con debounce (evita spam del Observer).
+   */
+  let processCardsTimer = null;
+
   function scheduleProcessCards() {
     if (processCardsTimer) clearTimeout(processCardsTimer);
-    processCardsTimer = setTimeout(processTicketCards, 150);
+    processCardsTimer = setTimeout(() => {
+      processTicketCards();
+      processQuickFilters();
+    }, 150);
   }
 
   // ---------------------------------------------------------------------------
@@ -528,8 +592,9 @@
     const existing = document.querySelector('input#summary[type="text"]');
     if (existing) injectWidget(existing);
 
-    // Procesamiento inicial de cards del board
+    // Procesamiento inicial de cards del board + quick filters
     processTicketCards();
+    processQuickFilters();
 
     const observer = new MutationObserver(() => {
       // Widget de formulario

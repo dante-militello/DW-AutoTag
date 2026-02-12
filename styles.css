@@ -293,15 +293,57 @@
 }
 
 /* ============================================================
+   QUICK FILTERS – Avatares en los botones de filtro rápido
+   ============================================================ */
+
+/* Avatar en el botón de filtro */
+.dwat-qf-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  margin-right: 4px;
+  margin-top: -1px;
+  box-shadow: 0 0 0 1px rgba(9, 30, 66, 0.13);
+}
+
+/* Fallback iniciales en filtro */
+.dwat-qf-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff6b35;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  vertical-align: middle;
+  margin-right: 4px;
+  margin-top: -1px;
+  line-height: 1;
+}
+
+/* Ajuste del botón que tiene avatar para mejor alineación */
+.dwat-qf-has-avatar {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0;
+}
+
+/* ============================================================
    BOARD – Avatares apilados en tickets del board
    Reemplaza el .ghx-avatar original con los usuarios taggeados.
+   Tamaños: 1 usuario = 32px (original), 2 = 28px, 3+ = 24px
    ============================================================ */
 
 /* Contenedor: hereda posición de .ghx-avatar, lo hacemos flex */
 .ghx-avatar.dwat-avatars {
   display: flex !important;
   align-items: center;
-  flex-direction: row-reverse; /* apila de derecha a izquierda */
+  flex-direction: row-reverse;
   justify-content: flex-end;
 }
 
@@ -309,19 +351,17 @@
 .dwat-bavatar {
   position: relative;
   display: inline-block;
-  width: 24px;
-  height: 24px;
   flex-shrink: 0;
   border-radius: 50%;
 }
 
-/* Los apilados se solapan hacia la izquierda */
 .dwat-bavatar.dwat-stacked {
-  margin-left: -8px;
+  margin-left: -10px;
 }
 
-/* Imagen del avatar en el board */
-.dwat-bavatar-img {
+/* ---------- Tamaño base (3+ usuarios): 24px ---------- */
+.dwat-bavatar-img,
+.dwat-bavatar-initials {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -332,11 +372,7 @@
   box-sizing: border-box;
 }
 
-/* Fallback: iniciales */
 .dwat-bavatar-initials {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
   background: #ff6b35;
   color: #fff;
   display: flex;
@@ -344,10 +380,40 @@
   justify-content: center;
   font-size: 9px;
   font-weight: 700;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 1px rgba(9, 30, 66, 0.13);
-  box-sizing: border-box;
   line-height: 1;
+}
+
+/* ---------- 1 usuario: 32px (tamaño original de Jira) ---------- */
+.dwat-count-1 .dwat-bavatar-img,
+.dwat-count-1 .dwat-bavatar-initials {
+  width: 32px;
+  height: 32px;
+  border: none;
+  box-shadow: none;
+}
+
+.dwat-count-1 .dwat-bavatar-initials {
+  font-size: 12px;
+}
+
+/* ---------- 2 usuarios: 28px, solapamiento suave ---------- */
+.dwat-count-2 .dwat-bavatar-img,
+.dwat-count-2 .dwat-bavatar-initials {
+  width: 28px;
+  height: 28px;
+}
+
+.dwat-count-2 .dwat-bavatar-initials {
+  font-size: 10px;
+}
+
+.dwat-count-2 .dwat-bavatar.dwat-stacked {
+  margin-left: -10px;
+}
+
+/* ---------- 3+ usuarios: 24px (compacto) ---------- */
+.dwat-count-3 .dwat-bavatar.dwat-stacked {
+  margin-left: -8px;
 }
 
 /* Indicador "+N" para muchos usuarios */
@@ -355,9 +421,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  border-radius: 11px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
   background: #ebecf0;
   color: #172b4d;
   font-size: 10px;
