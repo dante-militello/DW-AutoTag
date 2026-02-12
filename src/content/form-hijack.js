@@ -1,33 +1,52 @@
 /**
  * Form Hijack Content Script - Approach Simple
- * Espera a que #summary aparezca en el DOM y lo rellena 4 veces
+ * Rellena automáticamente el campo #summary con el TAG cuando aparece
  */
 
 let userSelection = null;
 
+console.log('[AutoTag FormHijack] Script iniciado');
+
 // Cargar selección de usuario
 chrome.storage.local.get('autoTagUserSelection', (data) => {
   userSelection = data['autoTagUserSelection'] || null;
-  console.log('[AutoTag FormHijack] Selección cargada:', userSelection);
+  console.log('[AutoTag FormHijack] Selección cargada:', userSelection?.tag || 'NINGUNA');
   
   if (userSelection && userSelection.tag) {
-    startWatching();
+    // Buscar e intentar rellenar inmediatamente
+    fillIfExists();
+    
+    // Luego instalar observer para cuando se abra el formulario nuevamente
+    installObserver();
   }
 });
 
 /**
- * Inicia el monitoreo para detectar el input #summary
+ * Intenta rellenar el campo si existe ahora
  */
-function startWatching() {
-  console.log('[AutoTag FormHijack] Iniciando observador');
+function fillIfExists() {
+  const input = document.getElementById('summary');
+  if (input) {
+    console.log('[AutoTag FormHijack] Campo #summary encontrado al cargar');
+    fillSummaryField(input);
+  } else {
+    console.log('[AutoTag FormHijack] Campo #summary no encontrado al cargar');
+  }
+}
+
+/**
+ * Instala observer para detectar cuando se abre el formulario
+ */
+function installObserver() {
+  console.log('[AutoTag FormHijack] Instalando observer para cambios en DOM');
   
   const observer = new MutationObserver(() => {
-    const summaryInput = document.getElementById('summary');
+    const input = document.getElementById('summary');
     
-    if (summaryInput && !summaryInput.dataset.autoTagProcessed) {
-      console.log('[AutoTag FormHijack] Input #summary detectado!');
-      summaryInput.dataset.autoTagProcessed = 'true';
-      fillSummaryField(summaryInput);
+    // Si el input existe y no lo hemos procesado aún
+    if (input && !input.dataset.autoTagFilled) {
+      console.log('[AutoTag FormHijack] Campo #summary detectado en observer');
+      fillSummaryField(input);
     }
   });
 
@@ -35,44 +54,34 @@ function startWatching() {
     childList: true,
     subtree: true
   });
-
-  console.log('[AutoTag FormHijack] Observador iniciado');
-  
-  // Búsqueda inicial por si el campo ya existe
-  const existingInput = document.getElementById('summary');
-  if (existingInput && !existingInput.dataset.autoTagProcessed) {
-    console.log('[AutoTag FormHijack] Input #summary encontrado en búsqueda inicial');
-    existingInput.dataset.autoTagProcessed = 'true';
-    fillSummaryField(existingInput);
-  }
 }
 
 /**
- * Intenta rellenar el campo #summary 4 veces
+ * Rellena el campo #summary 4 veces (por si JIRA lo limpia)
  */
 function fillSummaryField(input) {
   const tag = userSelection.tag + ' ';
+  input.dataset.autoTagFilled = 'true';
+  
   let attempts = 0;
   const maxAttempts = 4;
   const delayMs = 300;
 
   function attempt() {
     attempts++;
-    console.log(`[AutoTag FormHijack] Intento ${attempts}/${maxAttempts}`);
+    console.log(`[AutoTag FormHijack] Intento ${attempts}/${maxAttempts} - Value: "${input.value}"`);
     
     if (input.value.trim() === '') {
       input.value = tag;
       input.dispatchEvent(new Event('input', { bubbles: true }));
       input.dispatchEvent(new Event('change', { bubbles: true }));
-      console.log(`[AutoTag FormHijack] Intento ${attempts}: Valor insertado: "${tag}"`);
+      console.log(`[AutoTag FormHijack] Intento ${attempts}: TAG insertado ✓`);
     } else {
-      console.log(`[AutoTag FormHijack] Intento ${attempts}: Input ya tiene valor: "${input.value}"`);
+      console.log(`[AutoTag FormHijack] Intento ${attempts}: Campo ya tiene valor`);
     }
 
     if (attempts < maxAttempts) {
       setTimeout(attempt, delayMs);
-    } else {
-      console.log('[AutoTag FormHijack] Completados 4 intentos');
     }
   }
 
@@ -80,25 +89,11 @@ function fillSummaryField(input) {
 }
 
 /**
- * Escuchar cambios en storage (si se cambia de usuario)
+ * Escuchar cambios en storage
  */
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.autoTagUserSelection) {
     userSelection = changes.autoTagUserSelection.newValue || null;
-    console.log('[AutoTag FormHijack] Selección de usuario actualizada:', userSelection);
-  }
-});
-
-/**
- * Escuchar mensajes desde popup
- */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === 'forceRender') {
-    console.log('[AutoTag FormHijack] Recibida acción forceRender');
-    chrome.storage.local.get('autoTagUserSelection', (data) => {
-      userSelection = data['autoTagUserSelection'] || null;
-      sendResponse({ success: true });
-    });
-    return true;
+    console.log('[AutoTag FormHijack] Selección actualizada:', userSelection?.tag || 'NINGUNA');
   }
 });
