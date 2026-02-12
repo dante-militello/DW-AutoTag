@@ -156,10 +156,29 @@ async function forceRender() {
   statusEl.className = 'loading';
 
   try {
-    // Enviar mensaje al content script
+    // Obtener usuario seleccionado
+    const selection = await ConfigManager.getUserSelection();
+    if (!selection || !selection.tag) throw new Error('No hay usuario seleccionado');
+
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    await chrome.tabs.sendMessage(tab.id, { action: 'forceRender' });
+
+    // Ejecutar script en la pestaña activa para forzar relleno del campo #summary
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: (tag) => {
+        try {
+          const input = document.getElementById('summary');
+          if (!input) return { ok: false, reason: 'no-input' };
+          input.value = tag + ' ';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          return { ok: true };
+        } catch (e) {
+          return { ok: false, reason: e.message };
+        }
+      },
+      args: [selection.tag]
+    });
 
     statusEl.textContent = 'Página renderizada ✓';
     statusEl.className = 'success';

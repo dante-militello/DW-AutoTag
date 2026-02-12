@@ -3,6 +3,9 @@
  * Rellena automáticamente el campo #summary con el TAG cuando aparece
  */
 
+// LOG INMEDIATO para verificar que el script se ejecuta
+console.error('██ [AutoTag FormHijack] SCRIPT LOADED ██');
+
 let userSelection = null;
 
 console.log('[AutoTag FormHijack] Script iniciado');
