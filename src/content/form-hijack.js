@@ -58,6 +58,11 @@ function installObserver() {
       console.log('[AutoTag FormHijack] Campo #summary detectado en observer');
       fillSummaryField(input);
     }
+    // Detectar apertura del modal de Create Issue e inyectar campo autotag
+    const dialog = document.getElementById('create-issue-dialog');
+    if (dialog) {
+      ensureModalField();
+    }
   });
 
   observer.observe(document.body, {
@@ -272,6 +277,48 @@ function attachSummarySelector() {
 
 // initialize selector attachment
 attachSummarySelector();
+
+// Inject a persistent field inside the Create Issue modal so users can pick tags there
+function ensureModalField() {
+  try {
+    const dialog = document.getElementById('create-issue-dialog');
+    if (!dialog) return;
+    if (dialog.querySelector('.autotag-modal-field')) return; // already added
+
+    // try to find the summary field-group to insert after
+    const summaryInput = dialog.querySelector('#summary');
+    const summaryGroup = summaryInput && summaryInput.closest && summaryInput.closest('.field-group');
+    const insertAfter = summaryGroup || dialog.querySelector('.content') || dialog.querySelector('.form-body');
+    if (!insertAfter) return;
+
+    const field = document.createElement('div');
+    field.className = 'field-group autotag-modal-field';
+    field.innerHTML = `
+      <label for="autotag-field">Auto Tag</label>
+      <div class="autotag-modal-control" style="display:flex;gap:8px;align-items:center;">
+        <input id="autotag-field" class="text long-field" type="text" readonly placeholder="Select users..." />
+        <button type="button" id="autotag-open-btn" class="aui-button">Select</button>
+      </div>
+    `;
+
+    if (summaryGroup && summaryGroup.parentNode) {
+      summaryGroup.parentNode.insertBefore(field, summaryGroup.nextSibling);
+    } else if (insertAfter) {
+      insertAfter.appendChild(field);
+    }
+
+    const inputEl = field.querySelector('#autotag-field');
+    const btn = field.querySelector('#autotag-open-btn');
+    btn.addEventListener('click', (e) => { e.stopPropagation(); showUserDropdown(inputEl); });
+    inputEl.addEventListener('click', (e) => { e.stopPropagation(); showUserDropdown(inputEl); });
+    console.log('[AutoTag FormHijack] Campo autotag inyectado en modal Create Issue');
+  } catch (err) {
+    console.error('[AutoTag FormHijack] Error injecting modal field', err);
+  }
+}
+
+// Try to inject immediately in case the dialog is already open
+ensureModalField();
 
 
 /**
