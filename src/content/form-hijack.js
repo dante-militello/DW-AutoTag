@@ -123,6 +123,10 @@ function ensureStyles() {
     .autotag-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; }
     .autotag-name { font-size:13px; color:#333; font-weight:600; }
     .autotag-tag { font-size:12px; color: #FF6B35; margin-top:2px; }
+    .autotag-item.selected { background:#FFF0E8; outline: 2px solid rgba(255,107,53,0.12); }
+    .autotag-chips { display:flex; gap:6px; padding:8px; flex-wrap:wrap; border-bottom:1px solid #f1f1f1; }
+    .autotag-chip { background:#FFF5F0; color: #FF6B35; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:600; }
+    .autotag-apply { display:block; width:100%; border:none; background:#FF6B35; color:white; padding:8px; font-weight:600; border-radius:0 0 6px 6px; cursor:pointer; }
   `;
   document.head.appendChild(style);
 }
@@ -134,9 +138,19 @@ function createDropdown() {
   container.className = 'autotag-dropdown';
   container.style.display = 'none';
 
+  const chips = document.createElement('div');
+  chips.className = 'autotag-chips';
+  container.appendChild(chips);
+
   const list = document.createElement('ul');
   list.className = 'autotag-list';
   container.appendChild(list);
+
+  const apply = document.createElement('button');
+  apply.className = 'autotag-apply';
+  apply.textContent = 'Apply';
+  apply.onclick = () => { container.style.display = 'none'; };
+  container.appendChild(apply);
 
   document.body.appendChild(container);
   return { container, list };
@@ -157,6 +171,37 @@ async function showUserDropdown(input) {
   const list = DROPDOWN.list;
   list.innerHTML = '';
 
+  let selectedUsers = [];
+
+  function updateChips() {
+    DROPDOWN.list.previousSibling && (DROPDOWN.list.previousSibling.innerHTML = '');
+    const chipContainer = DROPDOWN.list.previousSibling;
+    selectedUsers.forEach(u => {
+      const chip = document.createElement('span');
+      chip.className = 'autotag-chip';
+      chip.textContent = u.tag.replace(/\[|\]/g,'');
+      chipContainer.appendChild(chip);
+    });
+  }
+
+  function updateInputFromSelection(inputEl) {
+    if (!selectedUsers.length) {
+      // clear any previously inserted tag
+      // only clear if the current value matches a bracketed tag pattern
+      if (/^\[[^\]]+\]\s*/.test(inputEl.value)) {
+        inputEl.value = '';
+      }
+      inputEl.dispatchEvent(new Event('input',{bubbles:true}));
+      inputEl.dispatchEvent(new Event('change',{bubbles:true}));
+      return;
+    }
+    const tags = selectedUsers.map(u => u.tag.replace(/\[|\]/g,''));
+    const combined = '[' + tags.join('/') + ']';
+    inputEl.value = combined + ' ';
+    inputEl.dispatchEvent(new Event('input',{bubbles:true}));
+    inputEl.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+
   if (!users || users.length === 0) {
     const li = document.createElement('li');
     li.className = 'autotag-item';
@@ -166,14 +211,21 @@ async function showUserDropdown(input) {
     users.forEach(user => {
       const li = document.createElement('li');
       li.className = 'autotag-item';
+      li.dataset.userid = user.id;
       li.innerHTML = `<img class="autotag-avatar" src="${user.avatar}" alt="${user.name}"><div><div class="autotag-name">${user.name}</div><div class="autotag-tag">${user.tag}</div></div>`;
       li.onclick = (e) => {
         e.stopPropagation();
-        input.value = user.tag + ' ';
-        input.dispatchEvent(new Event('input',{bubbles:true}));
-        input.dispatchEvent(new Event('change',{bubbles:true}));
-        hideDropdown();
-        input.focus();
+        // toggle selection
+        const idx = selectedUsers.findIndex(u => u.id === user.id);
+        if (idx === -1) {
+          selectedUsers.push(user);
+          li.classList.add('selected');
+        } else {
+          selectedUsers.splice(idx,1);
+          li.classList.remove('selected');
+        }
+        updateChips();
+        updateInputFromSelection(input);
       };
       list.appendChild(li);
     });
