@@ -78,7 +78,7 @@ function syncConfig() {
  */
 async function loadConfigFromURL() {
   try {
-    const CONFIG_URL = 'https://repo.com/config.json'; // Cambiar a URL real
+    const CONFIG_URL = 'https://raw.githubusercontent.com/dante-militello/DW-AutoTag/main/config.json';
     const response = await fetch(CONFIG_URL);
     
     if (!response.ok) {

@@ -21,17 +21,21 @@ cd DW-AutoTag
 
 ### 2. Configurar URL de configuración
 
-Editar `src/config.js` y cambiar:
+Las URLs de configuración ya están configuradas para:
 
 ```javascript
-const CONFIG_URL = 'https://repo.com/config.json';
+const CONFIG_URL = 'https://raw.githubusercontent.com/dante-militello/DW-AutoTag/main/config.json';
 ```
 
-Por tu URL real donde alojes el JSON centralizado.
+Se encuentran en:
+- `src/config.js`
+- `src/background/background.js`
 
-También editar `src/background/background.js` con la misma URL.
+No es necesario cambiar estas URLs si mantienes el archivo `config.json` en la raíz del repositorio.
 
 ### 3. Preparar el JSON de configuración
+
+Crear archivo `config.json` en la **raíz del repositorio** (mismo nivel que `README.md`).
 
 Usar `config.example.json` como referencia. Estructura esperada:
 
@@ -49,11 +53,12 @@ Usar `config.example.json` como referencia. Estructura esperada:
 }
 ```
 
-⚠️ **Importante**: Los avatares deben estar alojados en `https://campus.donweb.com/`
+⚠️ **Importante**: 
+- Alojar `config.json` en la raíz del repositorio
+- Los avatares deben estar en `https://campus.donweb.com/`
 - Las imágenes deben ser públicas y accesibles
 - Formatos recomendados: JPG, PNG
-- Tamaño recomendado: 200x200px o superior
-- Se mostrarán a 20x20px en listados
+- Tamaño recomendado: 200x200px o superior (se mostrarán a 20x20px)
 
 ### 4. Instalar en Chrome/Edge
 
@@ -136,16 +141,13 @@ Archivo de configuración que se alojar en servidor:
 }
 ```
 
-### Headers CORS requeridos
+### Headers CORS
 
-El servidor debe permitir CORS para que la extensión acceda:
+**GitHub** (raw.githubusercontent.com): ✓ CORS habilitado automáticamente
 
-```
-Access-Control-Allow-Origin: *
-Content-Type: application/json
-```
+No se requiere configuración si alojas en GitHub Raw Content. La extensión puede acceder sin problemas.
 
-**Para imágenes de campus.donweb.com:** Asegurar que las imágenes alojadas allí sean accesibles públicamente sin restricciones de CORS.
+**Para imágenes de campus.donweb.com:** Asegurar que sean accesibles públicamente.
 
 ## Caché y sincronización
 

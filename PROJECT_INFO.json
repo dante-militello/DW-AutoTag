@@ -10,5 +10,6 @@
   "targetDomain": "https://jira-iti.dat",
   "browser": "Chrome/Edge (Manifest V3)",
   "avatarSource": "https://campus.donweb.com/",
-  "configLocation": "JSON centralizado online"
+  "configLocation": "https://raw.githubusercontent.com/dante-militello/DW-AutoTag/main/config.json",
+  "repository": "https://github.com/dante-militello/DW-AutoTag"
 }

@@ -1,0 +1,23 @@
+{
+  "version": "1.0.0",
+  "users": [
+    {
+      "id": "user_001",
+      "name": "Santiago Aguirre",
+      "tag": "[SAguirre]",
+      "avatar": "https://campus.donweb.com/avatars/aguirre.jpg"
+    },
+    {
+      "id": "user_002",
+      "name": "Juan Pérez",
+      "tag": "[JPerez]",
+      "avatar": "https://campus.donweb.com/avatars/perez.jpg"
+    },
+    {
+      "id": "user_003",
+      "name": "María García",
+      "tag": "[MGarcia]",
+      "avatar": "https://campus.donweb.com/avatars/garcia.jpg"
+    }
+  ]
+}

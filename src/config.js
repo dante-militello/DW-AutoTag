@@ -3,7 +3,7 @@
  * Carga usuarios y avatares desde JSON online
  */
 
-const CONFIG_URL = 'https://repo.com/config.json'; // Cambiar a URL real
+const CONFIG_URL = 'https://raw.githubusercontent.com/dante-militello/DW-AutoTag/main/config.json';
 const CACHE_KEY = 'autoTagConfig';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas
 const USER_SELECTION_KEY = 'autoTagUserSelection';
