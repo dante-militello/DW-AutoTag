@@ -52,18 +52,42 @@
   // ---------------------------------------------------------------------------
   // Tag helpers
   // ---------------------------------------------------------------------------
+
+  /**
+   * Normaliza un string para comparación tolerante:
+   * quita acentos, pasa a minúsculas, elimina espacios extremos.
+   */
+  function normalize(str) {
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  /** Regex permisiva: captura todo lo que está entre [ ] al inicio. */
+  const TAG_REGEX = /^\[([^\]]+)\]\s*/;
+
   function buildTagString(selected) {
     if (selected.length === 0) return "";
     const inner = selected.map((u) => u.tag.replace(/[\[\]]/g, ""));
     return `[${inner.join("/")}]`;
   }
 
+  /**
+   * Dado el value de un input, extrae los tag names normalizados.
+   * Soporta "[SAguirre / Zamora]", "[SAguirre/Zamora]", etc.
+   */
+  function splitTagContent(raw) {
+    return raw.split("/").map((t) => normalize(t));
+  }
+
   function parseSelectedFromValue(value) {
-    const match = value.match(/^\[([\w/]+)\]\s*/);
+    const match = value.match(TAG_REGEX);
     if (!match) return [];
-    const tags = match[1].split("/");
+    const tags = splitTagContent(match[1]);
     return users.filter((u) => {
-      const inner = u.tag.replace(/[\[\]]/g, "");
+      const inner = normalize(u.tag.replace(/[\[\]]/g, ""));
       return tags.includes(inner);
     });
   }
@@ -74,7 +98,7 @@
   function updateSummaryField() {
     if (!summaryField) return;
     const tagString = buildTagString(selectedUsers);
-    let text = summaryField.value.replace(/^\[[\w/]+\]\s*/, "");
+    let text = summaryField.value.replace(TAG_REGEX, "");
     const newValue = tagString ? `${tagString} ${text}` : text;
     summaryField.value = newValue;
     summaryField.dispatchEvent(new Event("input", { bubbles: true }));
@@ -381,20 +405,21 @@
   // =========================================================================
 
   /**
-   * Dado un texto de summary, extrae los tag names internos.
-   * "[SAguirre/Zamora] Texto" → ["SAguirre", "Zamora"]
+   * Dado un texto de summary, extrae los tag names internos (normalizados).
+   * "[SAguirre / Zamora] Texto" → ["saguirre", "zamora"]
+   * "[Barberis / Blanco] Algo"  → ["barberis", "blanco"]
    */
   function extractTagNames(text) {
-    const m = text.match(/^\[([\w/]+)\]/);
-    return m ? m[1].split("/") : [];
+    const m = text.match(TAG_REGEX);
+    return m ? splitTagContent(m[1]) : [];
   }
 
   /**
-   * Dado un array de tag names, devuelve los users que matchean.
+   * Dado un array de tag names (normalizados), devuelve los users que matchean.
    */
   function matchUsersFromTags(tagNames) {
     return users.filter((u) => {
-      const inner = u.tag.replace(/[\[\]]/g, "");
+      const inner = normalize(u.tag.replace(/[\[\]]/g, ""));
       return tagNames.includes(inner);
     });
   }
@@ -459,7 +484,7 @@
       const matched = matchUsersFromTags(tagNames);
 
       // --- 1) Ocultar tag del título visible ---
-      const cleanText = rawText.replace(/^\[[\w/]+\]\s*/, "");
+      const cleanText = rawText.replace(TAG_REGEX, "");
       innerEl.textContent = cleanText;
 
       // Actualizar tooltip del summary
@@ -471,7 +496,7 @@
       if (ariaLabel) {
         card.setAttribute(
           "aria-label",
-          ariaLabel.replace(/^\[[\w/]+\]\s*/, "").replace(/Summary:\s*\[[\w/]+\]\s*/, "Summary: ")
+          ariaLabel.replace(/^\[[^\]]+\]\s*/, "").replace(/Summary:\s*\[[^\]]+\]\s*/, "Summary: ")
         );
       }
 
@@ -536,9 +561,10 @@
       const btnText = btn.textContent.trim();
 
       // Buscar match: el texto del botón coincide con el tag inner de algún usuario
+      const btnNorm = normalize(btnText);
       const matched = users.find((u) => {
-        const inner = u.tag.replace(/[\[\]]/g, "");
-        return inner === btnText;
+        const inner = normalize(u.tag.replace(/[\[\]]/g, ""));
+        return inner === btnNorm;
       });
 
       if (matched) {
