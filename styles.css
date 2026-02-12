@@ -1,5 +1,5 @@
 /* ============================================================
-   DW AutoTag v1.2.0 – Estilos integrados con Jira AUI
+   DW AutoTag v1.3.0 – Estilos integrados con Jira AUI
    El widget usa las clases nativas de Jira (field-group, text,
    long-field) y solo agrega lo mínimo necesario con prefijo dwat-.
    ============================================================ */
@@ -290,4 +290,81 @@
 .dwat-dd-item.active .dwat-dd-chk {
   color: #0052cc;
   font-weight: bold;
+}
+
+/* ============================================================
+   BOARD – Avatares apilados en tickets del board
+   Reemplaza el .ghx-avatar original con los usuarios taggeados.
+   ============================================================ */
+
+/* Contenedor: hereda posición de .ghx-avatar, lo hacemos flex */
+.ghx-avatar.dwat-avatars {
+  display: flex !important;
+  align-items: center;
+  flex-direction: row-reverse; /* apila de derecha a izquierda */
+  justify-content: flex-end;
+}
+
+/* Wrapper de cada avatar individual */
+.dwat-bavatar {
+  position: relative;
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+/* Los apilados se solapan hacia la izquierda */
+.dwat-bavatar.dwat-stacked {
+  margin-left: -8px;
+}
+
+/* Imagen del avatar en el board */
+.dwat-bavatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(9, 30, 66, 0.13);
+  display: block;
+  box-sizing: border-box;
+}
+
+/* Fallback: iniciales */
+.dwat-bavatar-initials {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ff6b35;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(9, 30, 66, 0.13);
+  box-sizing: border-box;
+  line-height: 1;
+}
+
+/* Indicador "+N" para muchos usuarios */
+.dwat-bavatar-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  background: #ebecf0;
+  color: #172b4d;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: -6px;
+  padding: 0 4px;
+  border: 2px solid #fff;
+  box-sizing: border-box;
+  position: relative;
 }

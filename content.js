@@ -2,9 +2,10 @@
   "use strict";
 
   // ========================================================================
-  // DW AutoTag v1.2.0 - Content Script
-  // Inyecta un campo "Asignación" encima de #summary usando la estructura
-  // nativa de Jira AUI (div.field-group > label + .text.long-field).
+  // DW AutoTag v1.3.0 - Content Script
+  // 1) Inyecta campo "Asignación" encima de #summary (formulario).
+  // 2) En el board: oculta tags del título y reemplaza avatares con los
+  //    usuarios taggeados (apilados si son varios).
   // Todos los logs van a la consola del navegador con prefijo [DW-AutoTag].
   // ========================================================================
 
@@ -375,21 +376,173 @@
     log("Widget removido");
   }
 
+  // =========================================================================
+  //  PARTE 2 – BOARD: Ocultar tags + Reemplazar avatares en tickets
+  // =========================================================================
+
+  let processCardsTimer = null;
+
+  /**
+   * Dado un texto de summary, extrae los tag names internos.
+   * "[SAguirre/Zamora] Texto" → ["SAguirre", "Zamora"]
+   */
+  function extractTagNames(text) {
+    const m = text.match(/^\[([\w/]+)\]/);
+    return m ? m[1].split("/") : [];
+  }
+
+  /**
+   * Dado un array de tag names, devuelve los users que matchean.
+   */
+  function matchUsersFromTags(tagNames) {
+    return users.filter((u) => {
+      const inner = u.tag.replace(/[\[\]]/g, "");
+      return tagNames.includes(inner);
+    });
+  }
+
+  /**
+   * Crea un elemento avatar (img con fallback a iniciales) para el board.
+   */
+  function createBoardAvatar(user, idx, total) {
+    const wrapper = document.createElement("span");
+    wrapper.className = "dwat-bavatar" + (idx > 0 ? " dwat-stacked" : "");
+    wrapper.style.zIndex = total - idx;
+    wrapper.title = user.name;
+
+    const img = document.createElement("img");
+    img.src = user.avatar;
+    img.alt = user.name;
+    img.className = "dwat-bavatar-img";
+    img.loading = "lazy";
+    img.onerror = function () {
+      this.replaceWith(createInitialsBadge(user));
+    };
+
+    wrapper.appendChild(img);
+    return wrapper;
+  }
+
+  function createInitialsBadge(user) {
+    const el = document.createElement("span");
+    el.className = "dwat-bavatar-initials";
+    el.textContent = user.name.split(" ").map((n) => n[0]).join("");
+    return el;
+  }
+
+  /**
+   * Procesa todos los tickets del board que aún no fueron procesados.
+   * - Oculta el tag [xxx/yyy] del título visible.
+   * - Reemplaza el avatar con los usuarios taggeados.
+   */
+  function processTicketCards() {
+    if (users.length === 0) return;
+
+    const cards = document.querySelectorAll(".ghx-issue:not([data-dwat])");
+    if (cards.length === 0) return;
+
+    log(`Procesando ${cards.length} ticket(s) del board…`);
+
+    cards.forEach((card) => {
+      const innerEl = card.querySelector(".ghx-summary .ghx-inner");
+      if (!innerEl) {
+        card.setAttribute("data-dwat", "skip");
+        return;
+      }
+
+      const rawText = innerEl.textContent;
+      const tagNames = extractTagNames(rawText);
+
+      if (tagNames.length === 0) {
+        card.setAttribute("data-dwat", "no-tag");
+        return;
+      }
+
+      const matched = matchUsersFromTags(tagNames);
+
+      // --- 1) Ocultar tag del título visible ---
+      const cleanText = rawText.replace(/^\[[\w/]+\]\s*/, "");
+      innerEl.textContent = cleanText;
+
+      // Actualizar tooltip del summary
+      const summaryDiv = card.querySelector(".ghx-summary");
+      if (summaryDiv) summaryDiv.title = cleanText;
+
+      // Actualizar aria-label del card
+      const ariaLabel = card.getAttribute("aria-label");
+      if (ariaLabel) {
+        card.setAttribute(
+          "aria-label",
+          ariaLabel.replace(/^\[[\w/]+\]\s*/, "").replace(/Summary:\s*\[[\w/]+\]\s*/, "Summary: ")
+        );
+      }
+
+      // --- 2) Reemplazar avatar ---
+      if (matched.length > 0) {
+        const avatarContainer = card.querySelector(".ghx-avatar");
+        if (avatarContainer) {
+          avatarContainer.innerHTML = "";
+          avatarContainer.classList.add("dwat-avatars");
+
+          const maxShow = 3;
+          const visible = matched.slice(0, maxShow);
+
+          visible.forEach((user, idx) => {
+            avatarContainer.appendChild(createBoardAvatar(user, idx, visible.length));
+          });
+
+          // Si hay más de maxShow, agregar indicador "+N"
+          if (matched.length > maxShow) {
+            const more = document.createElement("span");
+            more.className = "dwat-bavatar-more";
+            more.textContent = `+${matched.length - maxShow}`;
+            more.title = matched
+              .slice(maxShow)
+              .map((u) => u.name)
+              .join(", ");
+            avatarContainer.appendChild(more);
+          }
+
+          // Tooltip general del grupo
+          avatarContainer.title = matched.map((u) => u.name).join(", ");
+        }
+      }
+
+      card.setAttribute("data-dwat", "done");
+    });
+  }
+
+  /**
+   * Programa el procesamiento de cards con debounce (evita spam del Observer).
+   */
+  function scheduleProcessCards() {
+    if (processCardsTimer) clearTimeout(processCardsTimer);
+    processCardsTimer = setTimeout(processTicketCards, 150);
+  }
+
   // ---------------------------------------------------------------------------
-  // MutationObserver: detectar #summary en el DOM
+  // MutationObserver: detectar #summary + procesar board cards
   // ---------------------------------------------------------------------------
   function startObserver() {
+    // Chequeo inmediato del widget de formulario
     const existing = document.querySelector('input#summary[type="text"]');
     if (existing) injectWidget(existing);
 
+    // Procesamiento inicial de cards del board
+    processTicketCards();
+
     const observer = new MutationObserver(() => {
+      // Widget de formulario
       const el = document.querySelector('input#summary[type="text"]');
       if (el && !widgetInjected) injectWidget(el);
       else if (!el && widgetInjected) removeWidget();
+
+      // Board cards (debounced)
+      scheduleProcessCards();
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-    log("MutationObserver activo – esperando campo #summary");
+    log("MutationObserver activo – formulario + board");
   }
 
   // ---------------------------------------------------------------------------
@@ -407,7 +560,7 @@
   // Init
   // ---------------------------------------------------------------------------
   function init() {
-    log("Inicializando DW-AutoTag v1.2.0…");
+    log("Inicializando DW-AutoTag v1.3.0…");
     loadConfig().then(() => startObserver());
     setInterval(loadConfig, REFRESH_INTERVAL);
     setupOutsideClick();
