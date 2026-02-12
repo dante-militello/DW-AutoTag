@@ -27,7 +27,8 @@ function observeFormChanges() {
     mutations.forEach((mutation) => {
       // Buscar campo de título en modalDialog
       const titleInputs = document.querySelectorAll(
-        'input[name="summary"],' +
+          'input#summary,' +
+          'input[name="summary"],' +
         'input[placeholder*="title"],' +
         'input[placeholder*="Summary"],' +
         'textarea[name="summary"],' +
@@ -50,6 +51,7 @@ function observeFormChanges() {
 
   // Búsqueda inicial
   const initialInputs = document.querySelectorAll(
+    'input#summary,' +
     'input[name="summary"],' +
     'input[placeholder*="title"],' +
     'input[placeholder*="Summary"],' +
@@ -71,6 +73,27 @@ function hijackInput(inputElement) {
   if (!userSelection || !userSelection.tag) return;
 
   inputElement.dataset.autoTagHijacked = 'true';
+
+  // Insertar TAG inmediatamente si el campo está vacío (al abrir formulario)
+  try {
+    if (inputElement.value.trim() === '') {
+      inputElement.value = userSelection.tag + ' ';
+      inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+      inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // Reintento corto por si JIRA sobrescribe el valor después de renderizar
+      setTimeout(() => {
+        if (!inputElement.value || inputElement.value.trim() === '') {
+          inputElement.value = userSelection.tag + ' ';
+          inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+          inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, 250);
+    }
+  } catch (err) {
+    // Silenciar errores en páginas donde input no permita value
+    console.warn('[AutoTag] error inserting tag immediately', err);
+  }
 
   // Listener para cuando el usuario empieza a escribir
   inputElement.addEventListener('focus', (e) => {
