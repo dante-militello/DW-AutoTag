@@ -2,28 +2,29 @@
   "use strict";
 
   // ========================================================================
-  // DW AutoTag v1.1.0 - Content Script
-  // Inyecta un campo "Asignación" encima de #summary con selector de usuarios.
+  // DW AutoTag v1.2.0 - Content Script
+  // Inyecta un campo "Asignación" encima de #summary usando la estructura
+  // nativa de Jira AUI (div.field-group > label + .text.long-field).
   // Todos los logs van a la consola del navegador con prefijo [DW-AutoTag].
   // ========================================================================
 
   const CONFIG_URL =
     "https://raw.githubusercontent.com/dante-militello/DW-AutoTag/main/config.json";
-  const REFRESH_INTERVAL = 5 * 60 * 1000; // Refresca config cada 5 min
+  const REFRESH_INTERVAL = 5 * 60 * 1000;
 
   let users = [];
   let selectedUsers = [];
   let dropdownOpen = false;
-  let widgetInjected = false; // Evita inyectar dos veces
+  let widgetInjected = false;
   let summaryField = null;
 
-  // Referencia a los elementos inyectados
+  // Refs a los elementos inyectados
   let widgetContainer = null;
   let chipsArea = null;
   let dropdownEl = null;
 
   // ---------------------------------------------------------------------------
-  // Logging helpers – todo a la consola de la web
+  // Logging – todo a la consola de la web
   // ---------------------------------------------------------------------------
   const PREFIX = "%c[DW-AutoTag]";
   const STYLE = "color:#FF6B35;font-weight:bold";
@@ -72,11 +73,8 @@
   function updateSummaryField() {
     if (!summaryField) return;
     const tagString = buildTagString(selectedUsers);
-
-    // Quitar tag existente al principio
     let text = summaryField.value.replace(/^\[[\w/]+\]\s*/, "");
     const newValue = tagString ? `${tagString} ${text}` : text;
-
     summaryField.value = newValue;
     summaryField.dispatchEvent(new Event("input", { bubbles: true }));
     summaryField.dispatchEvent(new Event("change", { bubbles: true }));
@@ -84,7 +82,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Toggle selección de un usuario
+  // Toggle usuario
   // ---------------------------------------------------------------------------
   function toggleUser(user) {
     const idx = selectedUsers.findIndex((u) => u.id === user.id);
@@ -109,66 +107,60 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Render: Chips (usuarios seleccionados dentro del selector)
+  // Render: Chips
   // ---------------------------------------------------------------------------
   function renderChips() {
     if (!chipsArea) return;
-
-    // Limpiar todo menos el placeholder
     chipsArea.innerHTML = "";
 
     if (selectedUsers.length === 0) {
-      const placeholder = document.createElement("span");
-      placeholder.className = "dwat-chips-placeholder";
-      placeholder.textContent = "Click para asignar usuarios…";
-      chipsArea.appendChild(placeholder);
-    } else {
-      selectedUsers.forEach((user) => {
-        const chip = document.createElement("div");
-        chip.className = "dwat-chip";
+      const ph = document.createElement("span");
+      ph.className = "dwat-placeholder";
+      ph.textContent = "Click para asignar usuarios…";
+      chipsArea.appendChild(ph);
+      return;
+    }
 
-        const img = document.createElement("img");
-        img.className = "dwat-chip-avatar";
-        img.src = user.avatar;
-        img.alt = user.name;
-        img.onerror = function () {
-          this.style.display = "none";
-          const fb = document.createElement("span");
-          fb.className = "dwat-chip-avatar-fb";
-          fb.textContent = user.name.split(" ").map((n) => n[0]).join("");
-          chip.insertBefore(fb, chip.firstChild);
-        };
+    selectedUsers.forEach((user) => {
+      const chip = document.createElement("span");
+      chip.className = "dwat-chip";
 
-        const name = document.createElement("span");
-        name.className = "dwat-chip-name";
-        name.textContent = user.name;
+      const img = document.createElement("img");
+      img.className = "dwat-chip-avatar";
+      img.src = user.avatar;
+      img.alt = user.name;
+      img.onerror = function () {
+        this.style.display = "none";
+        const fb = document.createElement("span");
+        fb.className = "dwat-chip-initials";
+        fb.textContent = user.name.split(" ").map((n) => n[0]).join("");
+        chip.insertBefore(fb, chip.firstChild);
+      };
 
-        const remove = document.createElement("span");
-        remove.className = "dwat-chip-remove";
-        remove.textContent = "×";
-        remove.title = `Quitar ${user.name}`;
-        remove.addEventListener("click", (e) => {
-          e.stopPropagation();
-          toggleUser(user);
-        });
+      const name = document.createElement("span");
+      name.className = "dwat-chip-name";
+      name.textContent = user.name;
 
-        chip.appendChild(img);
-        chip.appendChild(name);
-        chip.appendChild(remove);
-        chipsArea.appendChild(chip);
+      const rm = document.createElement("span");
+      rm.className = "dwat-chip-rm";
+      rm.textContent = "×";
+      rm.title = `Quitar ${user.name}`;
+      rm.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleUser(user);
       });
-    }
 
-    // Tag preview
-    let preview = chipsArea.querySelector(".dwat-chips-preview");
-    if (!preview) {
-      preview = document.createElement("div");
-      preview.className = "dwat-chips-preview";
-      chipsArea.appendChild(preview);
-    }
-    const tag = buildTagString(selectedUsers);
-    preview.textContent = tag || "";
-    preview.style.display = tag ? "" : "none";
+      chip.appendChild(img);
+      chip.appendChild(name);
+      chip.appendChild(rm);
+      chipsArea.appendChild(chip);
+    });
+
+    // Tag preview al final
+    const preview = document.createElement("span");
+    preview.className = "dwat-tag-preview";
+    preview.textContent = buildTagString(selectedUsers);
+    chipsArea.appendChild(preview);
   }
 
   // ---------------------------------------------------------------------------
@@ -177,18 +169,17 @@
   function renderDropdownList() {
     if (!dropdownEl) return;
 
-    // Limpiar lista actual
-    const existingList = dropdownEl.querySelector(".dwat-dd-list");
-    if (existingList) existingList.remove();
+    const existing = dropdownEl.querySelector(".dwat-dd-list");
+    if (existing) existing.remove();
 
-    const list = document.createElement("div");
+    const list = document.createElement("ul");
     list.className = "dwat-dd-list";
 
     users.forEach((user) => {
-      const isSelected = selectedUsers.some((u) => u.id === user.id);
+      const isSel = selectedUsers.some((u) => u.id === user.id);
 
-      const item = document.createElement("div");
-      item.className = "dwat-dd-item" + (isSelected ? " selected" : "");
+      const li = document.createElement("li");
+      li.className = "dwat-dd-item" + (isSel ? " active" : "");
 
       // Avatar
       const avatar = document.createElement("img");
@@ -198,14 +189,14 @@
       avatar.loading = "lazy";
       avatar.onerror = function () {
         this.style.display = "none";
-        const fb = document.createElement("div");
-        fb.className = "dwat-dd-avatar-fb";
+        const fb = document.createElement("span");
+        fb.className = "dwat-dd-initials";
         fb.textContent = user.name.split(" ").map((n) => n[0]).join("");
-        item.insertBefore(fb, item.firstChild);
+        li.insertBefore(fb, li.firstChild);
       };
 
-      // Info
-      const info = document.createElement("div");
+      // Texto
+      const info = document.createElement("span");
       info.className = "dwat-dd-info";
 
       const nameEl = document.createElement("span");
@@ -219,31 +210,25 @@
       info.appendChild(nameEl);
       info.appendChild(tagEl);
 
-      // Checkbox
-      const chk = document.createElement("div");
-      chk.className = "dwat-dd-chk" + (isSelected ? " checked" : "");
-      chk.textContent = isSelected ? "✓" : "";
+      // Check icon
+      const chk = document.createElement("span");
+      chk.className = "dwat-dd-chk";
+      chk.textContent = isSel ? "✓" : "";
 
-      item.appendChild(avatar);
-      item.appendChild(info);
-      item.appendChild(chk);
+      li.appendChild(avatar);
+      li.appendChild(info);
+      li.appendChild(chk);
 
-      item.addEventListener("click", (e) => {
+      li.addEventListener("click", (e) => {
         e.stopPropagation();
         e.preventDefault();
         toggleUser(user);
       });
 
-      list.appendChild(item);
+      list.appendChild(li);
     });
 
-    // Insertar después del header
-    const header = dropdownEl.querySelector(".dwat-dd-header");
-    if (header && header.nextSibling) {
-      dropdownEl.insertBefore(list, header.nextSibling);
-    } else {
-      dropdownEl.appendChild(list);
-    }
+    dropdownEl.appendChild(list);
   }
 
   // ---------------------------------------------------------------------------
@@ -253,6 +238,7 @@
     if (!dropdownEl || dropdownOpen) return;
     dropdownEl.style.display = "block";
     dropdownOpen = true;
+    chipsArea.classList.add("dwat-active");
     renderDropdownList();
     log("Dropdown abierto");
   }
@@ -261,42 +247,52 @@
     if (!dropdownEl || !dropdownOpen) return;
     dropdownEl.style.display = "none";
     dropdownOpen = false;
+    chipsArea.classList.remove("dwat-active");
     log("Dropdown cerrado");
   }
 
   // ---------------------------------------------------------------------------
-  // Construir el widget completo "Asignación"
+  // Construir el widget – replica la estructura AUI de Jira:
+  //   <div class="field-group">
+  //     <label>Asignación</label>
+  //     <div class="text long-field dwat-chips-area">…chips…</div>
+  //     <div class="dwat-dropdown">…</div>
+  //   </div>
   // ---------------------------------------------------------------------------
   function buildWidget() {
-    // --- Contenedor principal ---
+    // Wrapper: misma clase que los demás campos de Jira
     widgetContainer = document.createElement("div");
-    widgetContainer.id = "dwat-widget";
-    widgetContainer.className = "dwat-widget";
+    widgetContainer.className = "field-group";
+    widgetContainer.id = "dwat-field-group";
 
-    // --- Label ---
+    // Label: idéntico al de Jira (sin for porque no es un input real)
     const label = document.createElement("label");
-    label.className = "dwat-label";
-    label.textContent = "Asignación";
+    label.setAttribute("for", "dwat-selector");
+    label.innerHTML = 'Asignación <span class="aui-icon icon-dwat" aria-hidden="true"></span>';
     widgetContainer.appendChild(label);
 
-    // --- Selector con chips ---
-    const selectorWrap = document.createElement("div");
-    selectorWrap.className = "dwat-selector-wrap";
+    // Contenedor relativo para posicionar el dropdown
+    const wrap = document.createElement("div");
+    wrap.className = "dwat-selector-wrap";
 
+    // Chips area: usa las clases de Jira + nuestra clase
     chipsArea = document.createElement("div");
-    chipsArea.className = "dwat-chips-area";
+    chipsArea.id = "dwat-selector";
+    chipsArea.className = "text long-field dwat-chips-area";
     chipsArea.addEventListener("click", (e) => {
       e.stopPropagation();
-      if (dropdownOpen) {
-        closeDropdown();
-      } else {
-        openDropdown();
-      }
+      dropdownOpen ? closeDropdown() : openDropdown();
     });
 
-    selectorWrap.appendChild(chipsArea);
+    // Flecha dropdown (como el reporter de Jira)
+    const arrow = document.createElement("span");
+    arrow.className = "dwat-arrow";
+    arrow.innerHTML = "▾";
+    chipsArea.appendChild(arrow);
 
-    // --- Dropdown ---
+    wrap.appendChild(chipsArea);
+
+    // Dropdown
     dropdownEl = document.createElement("div");
     dropdownEl.className = "dwat-dropdown";
     dropdownEl.style.display = "none";
@@ -320,36 +316,37 @@
     ddHeader.appendChild(ddClear);
     dropdownEl.appendChild(ddHeader);
 
-    selectorWrap.appendChild(dropdownEl);
-    widgetContainer.appendChild(selectorWrap);
+    wrap.appendChild(dropdownEl);
+    widgetContainer.appendChild(wrap);
 
-    // Render inicial de chips
+    // Descripción (como la del reporter)
+    const desc = document.createElement("div");
+    desc.className = "description";
+    desc.textContent = "Seleccioná uno o más usuarios para agregar el tag al título.";
+    widgetContainer.appendChild(desc);
+
     renderChips();
-
     return widgetContainer;
   }
 
   // ---------------------------------------------------------------------------
-  // Inyectar el widget encima de #summary
+  // Inyectar encima del field-group de #summary
   // ---------------------------------------------------------------------------
   function injectWidget(summaryEl) {
     if (widgetInjected) return;
-
     summaryField = summaryEl;
 
-    // Buscar el contenedor padre del summary para inyectar antes
-    // En Jira suele ser un .field-group, o un div wrapper
-    const parentGroup =
-      summaryEl.closest(".field-group") ||
-      summaryEl.closest("[class*='field']") ||
-      summaryEl.parentElement;
+    const summaryGroup = summaryEl.closest(".field-group");
+    if (!summaryGroup) {
+      warn("#summary encontrado pero no está dentro de .field-group, insertando antes del padre");
+      summaryEl.parentElement.insertBefore(buildWidget(), summaryEl);
+    } else {
+      summaryGroup.parentNode.insertBefore(buildWidget(), summaryGroup);
+    }
 
-    const widget = buildWidget();
-
-    parentGroup.parentNode.insertBefore(widget, parentGroup);
     widgetInjected = true;
 
-    // Si el summary ya tiene tags, parsearlos
+    // Parsear tags existentes
     if (summaryEl.value) {
       selectedUsers = parseSelectedFromValue(summaryEl.value);
       if (selectedUsers.length > 0) {
@@ -358,11 +355,11 @@
       }
     }
 
-    log("Widget 'Asignación' inyectado encima de #summary");
+    log("Widget 'Asignación' inyectado (field-group nativo)");
   }
 
   // ---------------------------------------------------------------------------
-  // Remover el widget (cuando #summary desaparece)
+  // Remover widget
   // ---------------------------------------------------------------------------
   function removeWidget() {
     if (widgetContainer) {
@@ -375,34 +372,23 @@
     summaryField = null;
     selectedUsers = [];
     dropdownOpen = false;
-    log("Widget removido (summary ya no existe)");
+    log("Widget removido");
   }
 
   // ---------------------------------------------------------------------------
-  // Observer: detectar cuándo aparece/desaparece #summary en el DOM
+  // MutationObserver: detectar #summary en el DOM
   // ---------------------------------------------------------------------------
   function startObserver() {
-    // Chequeo inmediato
     const existing = document.querySelector('input#summary[type="text"]');
-    if (existing) {
-      injectWidget(existing);
-    }
+    if (existing) injectWidget(existing);
 
     const observer = new MutationObserver(() => {
-      const summaryEl = document.querySelector('input#summary[type="text"]');
-
-      if (summaryEl && !widgetInjected) {
-        injectWidget(summaryEl);
-      } else if (!summaryEl && widgetInjected) {
-        removeWidget();
-      }
+      const el = document.querySelector('input#summary[type="text"]');
+      if (el && !widgetInjected) injectWidget(el);
+      else if (!el && widgetInjected) removeWidget();
     });
 
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
+    observer.observe(document.body, { childList: true, subtree: true });
     log("MutationObserver activo – esperando campo #summary");
   }
 
@@ -412,7 +398,6 @@
   function setupOutsideClick() {
     document.addEventListener("click", (e) => {
       if (!dropdownOpen) return;
-      // Si el click fue dentro del widget, no cerrar
       if (widgetContainer && widgetContainer.contains(e.target)) return;
       closeDropdown();
     });
@@ -422,17 +407,10 @@
   // Init
   // ---------------------------------------------------------------------------
   function init() {
-    log("Inicializando DW-AutoTag v1.1.0…");
-
-    loadConfig().then(() => {
-      startObserver();
-    });
-
-    // Refrescar config periódicamente
+    log("Inicializando DW-AutoTag v1.2.0…");
+    loadConfig().then(() => startObserver());
     setInterval(loadConfig, REFRESH_INTERVAL);
-
     setupOutsideClick();
-
     log("DW-AutoTag listo ✔");
   }
 

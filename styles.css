@@ -1,315 +1,293 @@
 /* ============================================================
-   DW AutoTag v1.1.0 – Widget "Asignación" + Dropdown
-   Prefijo: dwat- (para evitar colisiones con Jira)
+   DW AutoTag v1.2.0 – Estilos integrados con Jira AUI
+   El widget usa las clases nativas de Jira (field-group, text,
+   long-field) y solo agrega lo mínimo necesario con prefijo dwat-.
    ============================================================ */
 
-/* --- Widget contenedor --- */
-.dwat-widget {
-  margin-bottom: 8px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-}
-
-/* --- Label --- */
-.dwat-label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #475467;
-  margin-bottom: 5px;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-}
-
-/* --- Selector wrapper (contiene chips + dropdown) --- */
+/* --- Selector wrap (posiciona el dropdown) --- */
 .dwat-selector-wrap {
   position: relative;
+  display: inline-block;
+  width: 100%;
 }
 
-/* --- Área de chips (actúa como "input" clickeable) --- */
+/* --- Área de chips: hereda .text.long-field de Jira, solo ajustamos --- */
 .dwat-chips-area {
-  display: flex;
+  display: flex !important;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 6px 10px;
-  border: 2px solid #d0d5dd;
-  border-radius: 6px;
-  background: #ffffff;
+  gap: 4px;
+  min-height: 30px;
   cursor: pointer;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  padding-right: 24px !important;
+  box-sizing: border-box;
 }
 
-.dwat-chips-area:hover {
-  border-color: #ff6b35;
+.dwat-chips-area.dwat-active {
+  border-color: #4c9aff;
+  background: #fff;
 }
 
-.dwat-chips-area:focus-within,
-.dwat-chips-area:active {
-  border-color: #ff6b35;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+/* --- Flecha dropdown --- */
+.dwat-arrow {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #999;
+  font-size: 14px;
+  pointer-events: none;
+  line-height: 1;
 }
 
 /* --- Placeholder --- */
-.dwat-chips-placeholder {
-  color: #98a2b3;
-  font-size: 13px;
+.dwat-placeholder {
+  color: #999;
+  font-size: 14px;
   pointer-events: none;
   user-select: none;
+  line-height: 28px;
 }
 
-/* --- Chip individual --- */
+/* --- Chip (usuario seleccionado) --- */
 .dwat-chip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: #fff3ed;
-  border: 1px solid #ffd6c0;
-  border-radius: 20px;
-  padding: 3px 8px 3px 3px;
+  gap: 4px;
+  background: #deebff;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 4px 2px 2px;
   font-size: 12px;
-  color: #1d2939;
-  transition: background 0.12s;
+  color: #172b4d;
+  line-height: 1.4;
   user-select: none;
+  white-space: nowrap;
 }
 
 .dwat-chip:hover {
-  background: #ffe8da;
+  background: #b3d4ff;
 }
 
 .dwat-chip-avatar {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
 }
 
-.dwat-chip-avatar-fb {
-  width: 22px;
-  height: 22px;
+.dwat-chip-initials {
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b35, #e85d26);
+  background: #ff6b35;
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
 .dwat-chip-name {
-  font-weight: 500;
-  white-space: nowrap;
+  font-weight: normal;
 }
 
-.dwat-chip-remove {
+.dwat-chip-rm {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
   font-size: 14px;
   line-height: 1;
-  color: #98a2b3;
+  color: #6b778c;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-  margin-left: 2px;
 }
 
-.dwat-chip-remove:hover {
-  background: #ff6b35;
-  color: #ffffff;
+.dwat-chip-rm:hover {
+  background: #ff5630;
+  color: #fff;
 }
 
-/* --- Tag preview (debajo de chips) --- */
-.dwat-chips-preview {
-  width: 100%;
+/* --- Tag preview (monospace, sutil) --- */
+.dwat-tag-preview {
   font-size: 11px;
-  font-family: "SF Mono", Consolas, Monaco, monospace;
-  color: #667085;
-  margin-top: 2px;
-  padding-top: 4px;
-  border-top: 1px dashed #eaecf0;
+  font-family: monospace;
+  color: #6b778c;
+  margin-left: auto;
+  padding-right: 2px;
+  white-space: nowrap;
+}
+
+/* --- Icon en label (punto naranja como indicador DW) --- */
+.icon-dwat::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #ff6b35;
+  border-radius: 50%;
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
 /* ============================================================
-   Dropdown
+   Dropdown – estilo similar al de Jira (aui-list)
    ============================================================ */
 .dwat-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: 100%;
   left: 0;
   right: 0;
-  background: #ffffff;
-  border: 1px solid #d0d5dd;
-  border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08);
-  z-index: 999999;
+  margin-top: 1px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  box-shadow: 0 4px 8px -2px rgba(9, 30, 66, 0.25),
+    0 0 1px rgba(9, 30, 66, 0.31);
+  z-index: 9999;
   overflow: hidden;
-  animation: dwat-fadeIn 0.15s ease-out;
 }
 
-@keyframes dwat-fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* --- Header del dropdown --- */
+/* --- Header dropdown --- */
 .dwat-dd-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
-  font-weight: 600;
+  padding: 8px 10px;
   font-size: 11px;
-  color: #475467;
+  font-weight: 600;
+  color: #6b778c;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
-  border-bottom: 1px solid #eaecf0;
-  background: #f9fafb;
+  letter-spacing: 0.3px;
+  border-bottom: 1px solid #dfe1e6;
+  background: #fafbfc;
 }
 
 .dwat-dd-clear {
   font-size: 11px;
-  font-weight: 500;
-  color: #ff6b35;
+  font-weight: normal;
+  color: #0052cc;
   cursor: pointer;
   text-transform: none;
   letter-spacing: 0;
-  padding: 2px 8px;
-  border-radius: 4px;
-  transition: background 0.15s;
 }
 
 .dwat-dd-clear:hover {
-  background: #fff3ed;
+  color: #0065ff;
+  text-decoration: underline;
 }
 
-/* --- Lista de usuarios --- */
+/* --- Lista --- */
 .dwat-dd-list {
-  max-height: 240px;
-  overflow-y: auto;
+  list-style: none;
+  margin: 0;
   padding: 4px 0;
+  max-height: 220px;
+  overflow-y: auto;
 }
 
 .dwat-dd-list::-webkit-scrollbar {
   width: 6px;
 }
 
-.dwat-dd-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
 .dwat-dd-list::-webkit-scrollbar-thumb {
-  background: #d0d5dd;
+  background: #c1c7d0;
   border-radius: 3px;
 }
 
-/* --- Item de usuario --- */
+/* --- Item --- */
 .dwat-dd-item {
   display: flex;
   align-items: center;
-  padding: 8px 14px;
+  padding: 6px 10px;
+  gap: 8px;
   cursor: pointer;
-  gap: 10px;
-  transition: background 0.12s ease;
+  transition: background 0.1s;
   user-select: none;
 }
 
 .dwat-dd-item:hover {
-  background: #f0f4ff;
+  background: #ebecf0;
 }
 
-.dwat-dd-item.selected {
-  background: #fff3ed;
+.dwat-dd-item.active {
+  background: #deebff;
 }
 
-.dwat-dd-item.selected:hover {
-  background: #ffe8da;
+.dwat-dd-item.active:hover {
+  background: #b3d4ff;
 }
 
-/* --- Avatar en dropdown --- */
+/* --- Avatar dropdown --- */
 .dwat-dd-avatar {
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
-  border: 2px solid #eaecf0;
-  transition: border-color 0.15s;
 }
 
-.dwat-dd-item.selected .dwat-dd-avatar {
-  border-color: #ff6b35;
+.dwat-dd-item.active .dwat-dd-avatar {
+  box-shadow: 0 0 0 2px #0052cc;
 }
 
-.dwat-dd-avatar-fb {
-  width: 34px;
-  height: 34px;
+.dwat-dd-initials {
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b35, #e85d26);
-  color: #ffffff;
-  display: flex;
+  background: #ff6b35;
+  color: #fff;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-size: 10px;
   font-weight: 700;
-  font-size: 13px;
   flex-shrink: 0;
-  letter-spacing: 0.5px;
 }
 
-/* --- Info (nombre + tag) --- */
+/* --- Info --- */
 .dwat-dd-info {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-width: 0;
-  gap: 1px;
 }
 
 .dwat-dd-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: #1d2939;
+  font-size: 14px;
+  color: #172b4d;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
 }
 
 .dwat-dd-tag {
   font-size: 11px;
-  color: #98a2b3;
-  font-family: "SF Mono", Consolas, Monaco, monospace;
+  color: #6b778c;
+  font-family: monospace;
+  line-height: 1.3;
 }
 
-/* --- Checkbox visual --- */
+/* --- Check visual --- */
 .dwat-dd-chk {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #d0d5dd;
-  border-radius: 5px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s ease;
-  font-size: 12px;
+  font-size: 13px;
   color: transparent;
-  background: #ffffff;
 }
 
-.dwat-dd-chk.checked {
-  background: #ff6b35;
-  border-color: #ff6b35;
-  color: #ffffff;
+.dwat-dd-item.active .dwat-dd-chk {
+  color: #0052cc;
+  font-weight: bold;
 }
