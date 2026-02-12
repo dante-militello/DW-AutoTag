@@ -380,8 +380,6 @@
   //  PARTE 2 – BOARD: Ocultar tags + Reemplazar avatares en tickets
   // =========================================================================
 
-  let processCardsTimer = null;
-
   /**
    * Dado un texto de summary, extrae los tag names internos.
    * "[SAguirre/Zamora] Texto" → ["SAguirre", "Zamora"]
