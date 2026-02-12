@@ -196,6 +196,13 @@ async function showUserDropdown(input) {
       if (/^\[[^\]]+\]\s*/.test(inputEl.value)) {
         inputEl.value = '';
       }
+      // also clear summary if it was synced
+      const summaryEl = document.getElementById('summary');
+      if (summaryEl && /^\[[^\]]+\]\s*/.test(summaryEl.value)) {
+        summaryEl.value = '';
+        summaryEl.dispatchEvent(new Event('input',{bubbles:true}));
+        summaryEl.dispatchEvent(new Event('change',{bubbles:true}));
+      }
       inputEl.dispatchEvent(new Event('input',{bubbles:true}));
       inputEl.dispatchEvent(new Event('change',{bubbles:true}));
       return;
@@ -203,6 +210,13 @@ async function showUserDropdown(input) {
     const tags = selectedUsers.map(u => u.tag.replace(/\[|\]/g,''));
     const combined = '[' + tags.join('/') + ']';
     inputEl.value = combined + ' ';
+    // Also update the real summary field if present
+    const summaryEl = document.getElementById('summary');
+    if (summaryEl) {
+      summaryEl.value = combined + ' ';
+      summaryEl.dispatchEvent(new Event('input',{bubbles:true}));
+      summaryEl.dispatchEvent(new Event('change',{bubbles:true}));
+    }
     inputEl.dispatchEvent(new Event('input',{bubbles:true}));
     inputEl.dispatchEvent(new Event('change',{bubbles:true}));
   }
