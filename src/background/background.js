@@ -3,22 +3,23 @@
  * Maneja eventos globales y sincronización de configuración
  */
 
-// Importar ConfigManager (requerirá cargar config.js antes)
-let ConfigManager;
-
-// Cargar el script de config
-chrome.runtime.getURL('src/config.js');
+console.log('[AutoTag Background] Service Worker iniciado');
 
 /**
  * Al instalar/actualizar la extensión
  */
 chrome.runtime.onInstalled.addListener((details) => {
+  console.log('[AutoTag Background] onInstalled:', details.reason);
+  
   if (details.reason === 'install') {
-    // Primera instalación - abrir onboarding
-    chrome.action.openPopup();
+    // Primera instalación - cargar config y abrir onboarding
+    console.log('[AutoTag Background] Primera instalación, cargando config...');
+    loadConfigFromURL().then(() => {
+      chrome.action.openPopup();
+    });
   } else if (details.reason === 'update') {
-    // Actualización - puede ser útil en el futuro
-    console.log('Extension updated');
+    console.log('[AutoTag Background] Extensión actualizada, sincronizando config');
+    loadConfigFromURL();
   }
 });
 
@@ -26,25 +27,27 @@ chrome.runtime.onInstalled.addListener((details) => {
  * Listener para mensajes desde content scripts y popup
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('[AutoTag Background] Mensaje recibido:', request.action, 'desde:', sender.url);
+  
   if (request.action === 'getUserSelection') {
-    // Enviar selección actual al content script
     chrome.storage.local.get('autoTagUserSelection', (data) => {
+      console.log('[AutoTag Background] getUserSelection:', data['autoTagUserSelection']);
       sendResponse(data['autoTagUserSelection'] || null);
     });
     return true;
   }
 
   if (request.action === 'getConfig') {
-    // Enviar configuración al popup
     chrome.storage.local.get('autoTagConfig', (data) => {
+      console.log('[AutoTag Background] getConfig:', data['autoTagConfig']?.config);
       sendResponse(data['autoTagConfig']?.config || null);
     });
     return true;
   }
 
   if (request.action === 'clearSelection') {
-    // Limpiar selección del usuario
     chrome.storage.local.remove('autoTagUserSelection', () => {
+      console.log('[AutoTag Background] clearSelection ejecutado');
       sendResponse({ success: true });
     });
     return true;
@@ -55,11 +58,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
  * Sincronizar configuración periódicamente
  */
 function syncConfig() {
+  console.log('[AutoTag Background] syncConfig() llamado');
+  
   chrome.storage.local.get('autoTagConfig', (data) => {
     const cacheEntry = data['autoTagConfig'];
     
     if (!cacheEntry) {
-      // No hay caché, cargar ahora
+      console.log('[AutoTag Background] No hay caché, cargando config desde URL');
       loadConfigFromURL();
       return;
     }
@@ -68,7 +73,10 @@ function syncConfig() {
     const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 horas
 
     if (isExpired) {
+      console.log('[AutoTag Background] Caché expirado, recargando config');
       loadConfigFromURL();
+    } else {
+      console.log('[AutoTag Background] Caché válido, no es necesario recargar');
     }
   });
 }
@@ -79,6 +87,8 @@ function syncConfig() {
 async function loadConfigFromURL() {
   try {
     const CONFIG_URL = 'https://raw.githubusercontent.com/dante-militello/DW-AutoTag/main/config.json';
+    console.log('[AutoTag Background] Descargando config desde:', CONFIG_URL);
+    
     const response = await fetch(CONFIG_URL);
     
     if (!response.ok) {
@@ -86,6 +96,7 @@ async function loadConfigFromURL() {
     }
 
     const config = await response.json();
+    console.log('[AutoTag Background] Config descargada exitosamente:', config);
 
     // Guardar en caché
     chrome.storage.local.set({
@@ -93,22 +104,26 @@ async function loadConfigFromURL() {
         config,
         timestamp: Date.now()
       }
+    }, () => {
+      console.log('[AutoTag Background] Config guardada en caché');
     });
 
-    console.log('Config synced successfully');
   } catch (error) {
-    console.error('Error syncing config:', error);
+    console.error('[AutoTag Background] Error descargando config:', error);
   }
 }
 
+// Sincronizar al iniciar el service worker
+console.log('[AutoTag Background] Ejecutando syncConfig() al iniciar');
+syncConfig();
+
 // Sincronizar configuración cada 2 horas
 chrome.alarms.create('syncConfig', { periodInMinutes: 120 });
+console.log('[AutoTag Background] Alarma de sincronización configurada (cada 2 horas)');
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  console.log('[AutoTag Background] Alarma disparada:', alarm.name);
   if (alarm.name === 'syncConfig') {
     syncConfig();
   }
 });
-
-// Sincronizar al iniciar
-syncConfig();

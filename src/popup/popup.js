@@ -2,19 +2,26 @@
  * Popup Script - UI de la extensión
  */
 
+console.log('[AutoTag Popup] Script cargado');
+
 document.addEventListener('DOMContentLoaded', initPopup);
 
 async function initPopup() {
   try {
+    console.log('[AutoTag Popup] Inicializando popup');
+    
     const isFirstExecution = await ConfigManager.isFirstExecution();
+    console.log('[AutoTag Popup] ¿Primera ejecución?', isFirstExecution);
 
     if (isFirstExecution) {
+      console.log('[AutoTag Popup] Mostrando onboarding');
       showOnboarding();
     } else {
+      console.log('[AutoTag Popup] Mostrando pantalla principal');
       showMainScreen();
     }
   } catch (error) {
-    console.error('Error initializing popup:', error);
+    console.error('[AutoTag Popup] Error inicializando popup:', error);
     showError('Error al inicializar: ' + error.message);
   }
 }
@@ -23,10 +30,12 @@ async function initPopup() {
  * Muestra pantalla de onboarding
  */
 async function showOnboarding() {
+  console.log('[AutoTag Popup] showOnboarding() ejecutado');
   toggleScreen('onboarding', true);
 
   try {
     const users = await ConfigManager.getUsers();
+    console.log('[AutoTag Popup] Usuarios obtenidos:', users);
 
     if (!users || users.length === 0) {
       throw new Error('No users available in configuration');
@@ -49,6 +58,7 @@ async function showOnboarding() {
 
     document.getElementById('loadingOnboarding').style.display = 'none';
   } catch (error) {
+    console.error('[AutoTag Popup] Error en showOnboarding:', error);
     document.getElementById('loadingOnboarding').style.display = 'none';
     showError('Error al cargar usuarios: ' + error.message, 'errorOnboarding');
   }
