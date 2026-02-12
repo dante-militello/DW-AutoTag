@@ -3,21 +3,21 @@
   "users": [
     {
       "id": "user_001",
-      "name": "Santiago Aguirre",
+      "name": "Sebastian Aguirre",
       "tag": "[SAguirre]",
-      "avatar": "https://campus.donweb.com/avatars/aguirre.jpg"
+      "avatar": "https://campus.donweb.com/wp-content/uploads/2025/05/Sebastian-Aguirre-e1747932917900-300x300.jpg"
     },
     {
       "id": "user_002",
-      "name": "Juan Pérez",
-      "tag": "[JPerez]",
-      "avatar": "https://campus.donweb.com/avatars/perez.jpg"
+      "name": "José Zamora",
+      "tag": "[Zamora]",
+      "avatar": "https://campus.donweb.com/wp-content/uploads/2025/10/Zamora-Jose-300x300.jpg"
     },
     {
       "id": "user_003",
-      "name": "María García",
-      "tag": "[MGarcia]",
-      "avatar": "https://campus.donweb.com/avatars/garcia.jpg"
+      "name": "Dante Militello",
+      "tag": "[DMilitello]",
+      "avatar": "https://campus.donweb.com/wp-content/uploads/2026/02/Dante-Militello-150x150.pnghttps://campus.donweb.com/wp-content/uploads/2026/02/Dante-Militello-150x150.png"
     }
   ]
 }
