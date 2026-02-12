@@ -100,3 +100,50 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     console.log('[AutoTag FormHijack] Selección actualizada:', userSelection?.tag || 'NINGUNA');
   }
 });
+
+/**
+ * Wait for #summary to appear (polling) and fill it.
+ */
+function waitForSummaryAndFill() {
+  if (!userSelection || !userSelection.tag) return;
+  let checks = 0;
+  const maxChecks = 10;
+  const interval = setInterval(() => {
+    checks++;
+    const input = document.getElementById('summary');
+    if (input && (!input.dataset.autoTagFilled)) {
+      console.log('[AutoTag FormHijack] waitForSummaryAndFill: summary encontrado, llenando');
+      fillSummaryField(input);
+      clearInterval(interval);
+      return;
+    }
+    if (checks >= maxChecks) {
+      clearInterval(interval);
+      console.log('[AutoTag FormHijack] waitForSummaryAndFill: no se encontró #summary tras', checks, 'intentos');
+    }
+  }, 200);
+}
+
+// Escuchar clicks en el botón Create o su enlace
+document.addEventListener('click', (e) => {
+  const target = e.target;
+  if (!target) return;
+  // detectar enlace o botón de crear issue
+  const createBtn = target.closest && target.closest('#create_link, a.create-issue, li#create-menu');
+  if (createBtn) {
+    console.log('[AutoTag FormHijack] Click en Create detectado, esperando summary...');
+    // dar un pequeño delay y luego comenzar a buscar
+    setTimeout(waitForSummaryAndFill, 50);
+  }
+});
+
+// Escuchar tecla 'c' (accesskey) para crear
+document.addEventListener('keydown', (e) => {
+  if (e.key && e.key.toLowerCase() === 'c') {
+    // evitar cuando el usuario está escribiendo en un input
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+    console.log('[AutoTag FormHijack] Tecla C detectada, esperando summary...');
+    setTimeout(waitForSummaryAndFill, 50);
+  }
+});
