@@ -3,8 +3,6 @@
  * Inserta automáticamente el TAG al crear un ticket
  */
 
-let userSelection = null;
-
 // Cargar la selección del usuario al iniciar
 loadUserSelection();
 
@@ -12,9 +10,36 @@ loadUserSelection();
  * Carga la selección del usuario desde storage
  */
 function loadUserSelection() {
+  console.log('[AutoTag FormHijack] loadUserSelection() llamado');
+  
   chrome.storage.local.get('autoTagUserSelection', (data) => {
     userSelection = data['autoTagUserSelection'] || null;
-    observeFormChanges();
+    console.log('[AutoTag FormHijack] Selección de usuario cargada:', userSelection);
+    
+    if (userSelection) {
+      observeFormChanges();
+      
+      // Búsqueda periódica adicional por si MutationObserver falla
+      setInterval(scanForInputs, 500);
+    }
+  });
+}
+
+/**
+ * Escanea el DOM buscando inputs que no hayan sido hijacked
+ */
+function scanForInputs() {
+  const inputs = document.querySelectorAll(
+    'input#summary,' +
+    'input[name="summary"],' +
+    'input[placeholder*="Summary"]'
+  );
+
+  inputs.forEach(input => {
+    if (!input.dataset.autoTagHijacked) {
+      console.log('[AutoTag FormHijack] Input encontrado en scanForInputs:', input.id || input.name);
+      hijackInput(input);
+    }
   });
 }
 
@@ -22,32 +47,36 @@ function loadUserSelection() {
  * Observa cambios en el DOM para detectar formularios de creación
  */
 function observeFormChanges() {
+  console.log('[AutoTag FormHijack] Iniciando observador de cambios en DOM');
+  
   // Observer para detectar cuando se abre el modal de creación
   const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      // Buscar campo de título en modalDialog
-      const titleInputs = document.querySelectorAll(
-          'input#summary,' +
-          'input[name="summary"],' +
-        'input[placeholder*="title"],' +
-        'input[placeholder*="Summary"],' +
-        'textarea[name="summary"],' +
-        '[data-testid="issue.views.issue-base.foundation.summary.input"]'
-      );
+    // Buscar campo de título en modalDialog
+    const titleInputs = document.querySelectorAll(
+      'input#summary,' +
+      'input[name="summary"],' +
+      'input[placeholder*="title"],' +
+      'input[placeholder*="Summary"],' +
+      'textarea[name="summary"],' +
+      '[data-testid="issue.views.issue-base.foundation.summary.input"]'
+    );
 
-      titleInputs.forEach(input => {
-        if (!input.dataset.autoTagHijacked) {
-          hijackInput(input);
-        }
-      });
+    titleInputs.forEach(input => {
+      if (!input.dataset.autoTagHijacked) {
+        console.log('[AutoTag FormHijack] Input detectado, hijacking:', input.id || input.name);
+        hijackInput(input);
+      }
     });
   });
 
   observer.observe(document.body, {
     childList: true,
     subtree: true,
-    attributes: false
+    attributes: true,
+    attributeFilter: ['value', 'type', 'id', 'name']
   });
+
+  console.log('[AutoTag FormHijack] Observer instalado en document.body');
 
   // Búsqueda inicial
   const initialInputs = document.querySelectorAll(
@@ -59,9 +88,7 @@ function observeFormChanges() {
     '[data-testid="issue.views.issue-base.foundation.summary.input"]'
   );
 
-  initialInputs.forEach(input => {
-    if (!input.dataset.autoTagHijacked) {
-      hijackInput(input);
+  console.log('[AutoTag FormHijack] Búsqueda inicial encontró', initialInputs.length, 'inputs');
     }
   });
 }
@@ -70,41 +97,68 @@ function observeFormChanges() {
  * Hijackea un input de título para auto-insertar TAG
  */
 function hijackInput(inputElement) {
-  if (!userSelection || !userSelection.tag) return;
+  if (!userSelection || !userSelection.tag) {
+    console.log('[AutoTag FormHijack] No hay selección de usuario, saltando hijack');
+    return;
+  }
+
+  console.log('[AutoTag FormHijack] Hijacking input:', {
+    id: inputElement.id,
+    name: inputElement.name,
+    value: inputElement.value,
+    tag: userSelection.tag
+  });
 
   inputElement.dataset.autoTagHijacked = 'true';
 
-  // Insertar TAG inmediatamente si el campo está vacío (al abrir formulario)
-  try {
+  // Función auxiliar para insertar el TAG
+  function insertTag() {
+    console.log('[AutoTag FormHijack] Intentando insertar TAG en input');
     if (inputElement.value.trim() === '') {
       inputElement.value = userSelection.tag + ' ';
       inputElement.dispatchEvent(new Event('input', { bubbles: true }));
       inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-
-      // Reintento corto por si JIRA sobrescribe el valor después de renderizar
-      setTimeout(() => {
-        if (!inputElement.value || inputElement.value.trim() === '') {
-          inputElement.value = userSelection.tag + ' ';
-          inputElement.dispatchEvent(new Event('input', { bubbles: true }));
-          inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }, 250);
+      inputElement.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+      console.log('[AutoTag FormHijack] TAG insertado:', inputElement.value);
+    } else {
+      console.log('[AutoTag FormHijack] Input ya tiene valor:', inputElement.value);
     }
-  } catch (err) {
-    // Silenciar errores en páginas donde input no permita value
-    console.warn('[AutoTag] error inserting tag immediately', err);
   }
 
-  // Listener para cuando el usuario empieza a escribir
+  // Insertar inmediatamente si el campo está vacío
+  try {
+    insertTag();
+
+    // Reintento más agresivo: cada 200ms durante 1.5 segundos
+    let attempts = 0;
+    const maxAttempts = 7;
+    const retryInterval = setInterval(() => {
+      attempts++;
+      if (attempts >= maxAttempts) {
+        clearInterval(retryInterval);
+        console.log('[AutoTag FormHijack] Reintentos completados');
+        return;
+      }
+
+      if (!inputElement.value || inputElement.value.trim() === '') {
+        console.log('[AutoTag FormHijack] Campo vacío nuevamente, reinsertando en intento', attempts);
+        insertTag();
+      }
+    }, 200);
+  } catch (err) {
+    console.error('[AutoTag FormHijack] Error en hijackInput:', err);
+  }
+
+  // Listener para cuando el usuario hace focus
   inputElement.addEventListener('focus', (e) => {
-    // No hacer nada si ya tiene contenido
+    console.log('[AutoTag FormHijack] Focus event en input');
     if (e.target.value.trim() === '') {
-      // Insertar TAG automáticamente
+      console.log('[AutoTag FormHijack] Insertando TAG en focus');
       e.target.value = userSelection.tag + ' ';
       e.target.dispatchEvent(new Event('input', { bubbles: true }));
       e.target.dispatchEvent(new Event('change', { bubbles: true }));
     }
-  });
+  }, { once: false });
 
   // Prevenir que se elimine el TAG accidentalmente
   inputElement.addEventListener('keydown', (e) => {
@@ -115,7 +169,7 @@ function hijackInput(inputElement) {
     );
 
     if (isRemovingTag && currentValue === userSelection.tag + ' ') {
-      // Prevenir eliminar el TAG
+      console.log('[AutoTag FormHijack] Previniendo eliminación de TAG');
       e.preventDefault();
     }
   });
