@@ -9,20 +9,27 @@ console.error('██ [AutoTag FormHijack] SCRIPT LOADED ██');
 let userSelection = null;
 
 console.log('[AutoTag FormHijack] Script iniciado');
-
-// Cargar selección de usuario
-chrome.storage.local.get('autoTagUserSelection', (data) => {
+// Cargar selección de usuario (si existe)
+chrome.storage.local.get(['autoTagUserSelection','autoTagConfig'], (data) => {
   userSelection = data['autoTagUserSelection'] || null;
   console.log('[AutoTag FormHijack] Selección cargada:', userSelection?.tag || 'NINGUNA');
-  
-  if (userSelection && userSelection.tag) {
-    // Buscar e intentar rellenar inmediatamente
-    fillIfExists();
-    
-    // Luego instalar observer para cuando se abra el formulario nuevamente
-    installObserver();
-  }
 });
+
+// Helper: obtener lista de usuarios desde storage o pedir al background
+function getUsers() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('autoTagConfig', (data) => {
+      const conf = data['autoTagConfig']?.config;
+      if (conf && conf.users && conf.users.length) return resolve(conf.users);
+
+      // fallback: pedir al background
+      chrome.runtime.sendMessage({ action: 'getConfig' }, (resp) => {
+        if (resp && resp.users) return resolve(resp.users);
+        return resolve([]);
+      });
+    });
+  });
+}
 
 /**
  * Intenta rellenar el campo si existe ahora
@@ -100,6 +107,120 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     console.log('[AutoTag FormHijack] Selección actualizada:', userSelection?.tag || 'NINGUNA');
   }
 });
+
+/* ------------------ New UI: dropdown selector ------------------ */
+
+// Inject minimal styles for the dropdown
+function ensureStyles() {
+  if (document.getElementById('autotag-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'autotag-styles';
+  style.textContent = `
+    .autotag-dropdown { position: absolute; z-index: 999999; background: white; border: 1px solid #e6e6e6; box-shadow: 0 6px 18px rgba(0,0,0,0.12); border-radius:6px; width:280px; font-family: Arial, sans-serif; }
+    .autotag-list { list-style:none; margin:0; padding:6px; max-height:240px; overflow:auto; }
+    .autotag-item { display:flex; gap:8px; align-items:center; padding:6px; cursor:pointer; border-radius:4px; }
+    .autotag-item:hover { background:#FFF5F0; }
+    .autotag-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; }
+    .autotag-name { font-size:13px; color:#333; font-weight:600; }
+    .autotag-tag { font-size:12px; color: #FF6B35; margin-top:2px; }
+  `;
+  document.head.appendChild(style);
+}
+
+// Create dropdown element
+function createDropdown() {
+  ensureStyles();
+  const container = document.createElement('div');
+  container.className = 'autotag-dropdown';
+  container.style.display = 'none';
+
+  const list = document.createElement('ul');
+  list.className = 'autotag-list';
+  container.appendChild(list);
+
+  document.body.appendChild(container);
+  return { container, list };
+}
+
+const DROPDOWN = createDropdown();
+
+function positionDropdown(input, container) {
+  const rect = input.getBoundingClientRect();
+  const top = rect.bottom + window.scrollY + 6;
+  const left = rect.left + window.scrollX;
+  container.style.top = top + 'px';
+  container.style.left = left + 'px';
+}
+
+async function showUserDropdown(input) {
+  const users = await getUsers();
+  const list = DROPDOWN.list;
+  list.innerHTML = '';
+
+  if (!users || users.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'autotag-item';
+    li.textContent = 'No users available';
+    list.appendChild(li);
+  } else {
+    users.forEach(user => {
+      const li = document.createElement('li');
+      li.className = 'autotag-item';
+      li.innerHTML = `<img class="autotag-avatar" src="${user.avatar}" alt="${user.name}"><div><div class="autotag-name">${user.name}</div><div class="autotag-tag">${user.tag}</div></div>`;
+      li.onclick = (e) => {
+        e.stopPropagation();
+        input.value = user.tag + ' ';
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        hideDropdown();
+        input.focus();
+      };
+      list.appendChild(li);
+    });
+  }
+
+  positionDropdown(input, DROPDOWN.container);
+  DROPDOWN.container.style.display = 'block';
+}
+
+function hideDropdown() {
+  DROPDOWN.container.style.display = 'none';
+}
+
+// Attach click/focus handler to input#summary to show dropdown
+function attachSummarySelector() {
+  function handler(e) {
+    const input = e.target;
+    if (!input || input.id !== 'summary') return;
+    console.log('[AutoTag FormHijack] summary clicked — opening user dropdown');
+    showUserDropdown(input);
+  }
+
+  // Use event delegation on document
+  document.addEventListener('click', (e) => {
+    const target = e.target;
+    if (!target) return;
+    if (target.id === 'summary' || target.closest && target.closest('#summary')) {
+      handler({ target: document.getElementById('summary') });
+      return;
+    }
+    // click outside -> hide
+    if (DROPDOWN.container && !DROPDOWN.container.contains(target)) {
+      hideDropdown();
+    }
+  }, true);
+
+  // Also handle focus via keyboard
+  document.addEventListener('focusin', (e) => {
+    if (e.target && e.target.id === 'summary') {
+      handler(e);
+    }
+  });
+}
+
+// initialize selector attachment
+attachSummarySelector();
+
 
 /**
  * Wait for #summary to appear (polling) and fill it.
