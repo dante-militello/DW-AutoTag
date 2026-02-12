@@ -18,6 +18,24 @@
         "name": "Dante Militello",
         "tag": "[DMilitello]",
         "avatar": "https://campus.donweb.com/wp-content/uploads/2026/02/Dante-Militello-150x150.png"
+      },
+      {
+        "id": "user_004",
+        "name": "Fabian Blanco",
+        "tag": "[Blanco]",
+        "avatar": "https://campus.donweb.com/wp-content/uploads/2024/04/fabian-blanco-150x150.jpg"
+      },
+      {
+        "id": "user_005",
+        "name": "Sebastián Irazoqui",
+        "tag": "[Irazoqui]",
+        "avatar": "https://campus.donweb.com/wp-content/uploads/2024/04/Irazoqui-Sebastian-150x150.jpg"
+      },
+      {
+        "id": "user_006",
+        "name": "Ricardo J. Barberis",
+        "tag": "[Barberis]",
+        "avatar": "https://campus.donweb.com/wp-content/uploads/2024/04/Barberis-Roberto-150x150.jpg"
       }
     ]
   }
